@@ -1,0 +1,200 @@
+#!/usr/bin/env python
+
+""" ObjectFollowing 
+"""
+
+import rospy
+import cv2
+from cv2 import cv as cv
+from rbx1_vision.ros2opencv2 import ObjectMatchDetectTrack
+from std_msgs.msg import String
+from sensor_msgs.msg import Image
+import numpy as np
+
+class ObjectRecognizition(ObjectMatchDetectTrack):
+    def __init__(self, node_name):
+        ROS2OpenCV2.__init__(self, node_name)
+        self.node_name = node_name
+
+		# Get the paths to the cascade XML files for the Haar detectors.
+        # These are set in the launch file.
+        cascade_1 = rospy.get_param("~cascade_1", "")
+        cascade_2 = rospy.get_param("~cascade_2", "")
+        
+        # Initialize the Haar detectors using the cascade files
+        self.cascade_1 = cv2.CascadeClassifier(cascade_1)
+        self.cascade_2 = cv2.CascadeClassifier(cascade_2)
+        
+        # Set cascade parameters that tend to work well for faces.
+        # Can be overridden in launch file
+        self.haar_scaleFactor = rospy.get_param("~LBP_scaleFactor", 1.3)
+        self.haar_minNeighbors = rospy.get_param("~LBP_minNeighbors", 50)
+        self.haar_minSize = rospy.get_param("~LBP_minSize", 30)
+        self.haar_maxSize = rospy.get_param("~LBP_maxSize", 100)
+        
+        # Store all parameters together for passing to the detector
+        self.LBP_params = dict(scaleFactor = self.LBP_scaleFactor,
+                                minNeighbors = self.LBP_minNeighbors,
+                          
+                                minSize = (self.haar_minSize, self.LBP_minSize),
+                                maxSize = (self.haar_maxSize, self.LBP_maxSize)
+                                )
+                        
+        # Do we should text on the display?
+        self.show_text = rospy.get_param("~show_text", True)
+        
+        # Intialize the detection box
+        self.detect_box = None
+        
+
+		def process_image(self, cv_image):
+
+	        # # First blur the image
+	        # frame = cv2.blur(cv_image, (5, 5))
+
+
+	        # # Convert from RGB to HSV space
+	        # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+	        
+	        # # Create a mask using the current saturation and value parameters
+	        # mask = cv2.inRange(hsv, np.array((0., self.smin, self.vmin)), np.array((180., 255., self.vmax)))
+	       
+
+
+
+	        # STEP 1. Load a detector if one is specified
+	        if not self.detector_loaded:
+	            self.detector_loaded = self.load_template_detector()
+	            hsv_template1 = cv2.cvtColor(self.template, cv2.COLOR_BGR2HSV)
+	            cv2.imshow("Template", hsv_template1)
+	            mask_template1 = cv2.inRange(hsv_template1, np.array((0., self.smin, self.vmin)), np.array((180., 255., self.vmax)))
+	            self.DetectionWindow = self.match_template(cv_image)
+	            Object_roi = cv_image[y0:y1, x0:x1]
+	            # self.hist = cv2.calcHist( [hsv_template1], [0], mask_template1, [16], [0, 180] )
+	            # cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX);
+	            # self.hist = self.hist.reshape(-1)
+	       #      hsv_roi = hsv_template1
+	       #      mask_roi = mask_template1
+	       #      self.hist = cv2.calcHist( [hsv_roi], [0], mask_roi, [16], [0, 180] )
+	       #      cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX);
+	       #      self.hist = self.hist.reshape(-1)
+	       #      self.show_hist()
+	 
+
+
+	        # If the user is making a selection with the mouse, 
+	        # calculate a new histogram to track
+	        if self.selection is not None:
+	            x0, y0, w, h = self.selection
+	            x1 = x0 + w
+	            y1 = y0 + h
+	            self.DetectionWindow = (x0, y0, x1, y1)
+	            Object_roi = cv_image[y0:y1, x0:x1]
+	            # mask_roi = mask[y0:y1, x0:x1]
+	            # self.hist = cv2.calcHist( [hsv_roi], [0], mask_roi, [16], [0, 180] )
+	            # cv2.normalize(self.hist, self.hist, 0, 255, cv2.NORM_MINMAX);
+	            # self.hist = self.hist.reshape(-1)
+	            # self.show_hist()
+
+	        if self.detect_box is not None:
+	            self.selection = None
+
+
+	        
+	        # If we have a histogram, track it with CamShift
+	        if self.hist is not None:
+	        		# Create a greyscale version of the image
+	        		grey = cv2.cvtColor(Object_roi, cv2.COLOR_BGR2GRAY)
+			        
+			        # Equalize the histogram to reduce lighting effects
+			        grey = cv2.equalizeHist(grey)
+			        
+
+			        # Attempt to detect a face
+			        self.detect_box = self.detect_face(grey)
+			        
+			        # Did we find one?
+			        if self.detect_box is not None:
+			            self.hits += 1
+			        else:
+			            self.misses += 1
+			        
+			        # Keep tabs on the hit rate so far
+			        self.hit_rate = float(self.hits) / (self.hits + self.misses)
+	            # # Compute the backprojection from the histogram
+	            # backproject = cv2.calcBackProject([hsv], [0], self.hist, [0, 180], 1)
+	            
+	            # # Mask the backprojection with the mask created earlier
+	            # backproject &= mask
+
+	            # # Threshold the backprojection
+	            # ret, backproject = cv2.threshold(backproject, self.threshold, 255, cv.CV_THRESH_TOZERO)
+
+	            # x, y, w, h = self.track_window
+	            # if self.track_window is None or w <= 0 or h <=0:
+	            #     self.track_window = 0, 0, self.frame_width - 1, self.frame_height - 1
+	            
+	            # # Set the criteria for the CamShift algorithm
+	            # term_crit = ( cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1 )
+	            
+	            # # Run the CamShift algorithm
+	            # self.track_box, self.track_window = cv2.CamShift(backproject, self.track_window, term_crit)
+
+	            # # Display the resulting backprojection
+	            # cv2.imshow("Backproject", backproject)
+
+	        return cv_image
+
+
+
+
+
+    def detect_object(self, input_image):
+        # First check one of the frontal templates
+        if self.cascade_1:
+            objects = self.cascade_1.detectMultiScale(input_image, **self.haar_params)
+                                         
+        # If that fails, check the profile template
+        # if len(faces) == 0 and self.cascade_3:
+        #     faces = self.cascade_3.detectMultiScale(input_image, **self.haar_params)
+
+        # If that also fails, check a the other frontal template
+        if len(objects) == 0 and self.cascade_2:
+            objects = self.cascade_2.detectMultiScale(input_image, **self.LBP_params)
+
+        # The faces variable holds a list of face boxes.
+        # If one or more faces are detected, return the first one.  
+        if len(objects) > 0:
+            object_box = objects[0]
+        else:
+            # If no faces were detected, print the "LOST FACE" message on the screen
+            if self.show_text:
+                font_object = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = 0.5
+                cv2.putText(self.marker_image, "LOST FACE!", 
+                            (int(self.frame_size[0] * 0.65), int(self.frame_size[1] * 0.9)), 
+                            font_object, font_scale, cv.RGB(255, 50, 50))
+            object_box = None
+
+        # Display the hit rate so far
+        if self.show_text:
+            font_object = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.5
+            cv2.putText(self.marker_image, 
+                        (20, int(self.frame_size[1] * 0.9)), 
+                        font_object, font_scale, cv.RGB(255, 255, 0))
+        
+        return object_box
+
+
+        
+
+    
+if __name__ == '__main__':
+    try:
+        node_name = "Object_Recognizition"
+        ObjectRecognizition(node_name)
+        rospy.spin()
+    except KeyboardInterrupt:
+        print "Shutting down face detector node."
+        cv2.destroyAllWindows()

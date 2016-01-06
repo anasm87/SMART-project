@@ -1,0 +1,14 @@
+<launch>
+  <node pkg="srproject" name="ObjectMatchDetectTrack" type="ObjectMatchDetectTrack.py" output="screen">
+    <remap from="input_rgb_image" to="/camera/rgb/image_color" />
+    <rosparam>
+       smin: 85
+       vmin: 50
+       vmax: 254
+       threshold: 50
+    </rosparam>
+
+    <param name="template1" value="$(find srproject)/data/templates/Objects/mona_live/Object1.png" />
+    <param name="topicname1" value="/roi" />
+  </node>
+</launch>

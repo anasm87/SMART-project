@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 2.8.3)
+project(srproject)
+
+find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  dynamic_reconfigure
+  geometry_msgs
+  move_base_msgs
+  nav_msgs
+  roscpp
+  rospy
+  sensor_msgs
+  smach
+  smach_msgs
+  smach_ros
+  tf
+  visualization_msgs
+)
+
+
+
+catkin_package()
+catkin_python_setup()
+
+
+

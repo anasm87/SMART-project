@@ -1,0 +1,14 @@
+<launch>
+  <node pkg="srproject" name="FireMatchDetectTrack" type="FireMatchDetectTrack.py" output="screen">
+    <remap from="input_rgb_image" to="/camera/rgb/image_color" />
+    <rosparam>
+       smin: 120
+       vmin: 150
+       vmax: 231
+       threshold: 170
+    </rosparam>
+
+    <param name="template1" value="$(find srproject)/data/templates/Objects/mona_live/fire1.png" />
+    <param name="topicname1" value="/Fire_ROI" />
+  </node>
+</launch>
